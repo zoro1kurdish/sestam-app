@@ -201,6 +201,7 @@ function showAlert(message, type) {
  * Handles all logic for the sales page (POS system).
  */
 function handleSalesPage() {
+    // Existing POS elements
     const productSelect = document.getElementById('product-select');
     const productListContainer = document.getElementById('product-list-container');
     const posForm = document.getElementById('pos-form');
@@ -210,30 +211,29 @@ function handleSalesPage() {
     const finalizeSaleBtn = document.getElementById('finalize-sale-btn');
     const printReceiptBtn = document.getElementById('print-receipt-btn');
 
+    // New Customer & Payment elements
+    const customerSelect = document.getElementById('customer-select');
+    const addNewCustomerBtn = document.getElementById('add-new-customer-btn');
+    const paymentDebtRadio = document.getElementById('payment-debt');
+    const customerModalEl = document.getElementById('customer-modal');
+    const customerModal = new bootstrap.Modal(customerModalEl);
+    const customerForm = document.getElementById('customer-form');
+    const customerModalTitle = document.getElementById('customer-modal-title');
+    const customerIdInput = document.getElementById('customer-id');
+
     let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     let currentSale = []; // Array to hold items in the current invoice
 
-    /**
-     * Formats a number as Iraqi Dinar currency.
-     */
     const formatCurrency = (number) => new Intl.NumberFormat('en-US').format(number) + ' IQD';
 
-    /**
-     * Renders all products in the UI.
-     */
     function renderProducts() {
-        // Clear existing content
         productSelect.innerHTML = '<option selected disabled>کاڵایەک هەڵبژێرە...</option>';
         productListContainer.innerHTML = '';
-
         inventory.forEach(product => {
-            // Add to select dropdown
             const option = document.createElement('option');
             option.value = product.id;
             option.textContent = `${product.name} (${formatCurrency(product.price)})`;
             productSelect.appendChild(option);
-
-            // Add to product list cards
             const productCard = document.createElement('div');
             productCard.className = 'col-12';
             productCard.innerHTML = `
@@ -248,8 +248,6 @@ function handleSalesPage() {
                 </div>
             `;
             productListContainer.appendChild(productCard);
-            
-            // Add click listener to card to add to form
             productCard.addEventListener('click', () => {
                 productSelect.value = product.id;
                 quantityInput.focus();
@@ -257,17 +255,12 @@ function handleSalesPage() {
         });
     }
 
-    /**
-     * Renders the items in the current sale invoice.
-     */
     function renderInvoice() {
         invoiceItems.innerHTML = '';
         let total = 0;
-
         currentSale.forEach((item, index) => {
             const itemTotal = item.price * item.quantity;
             total += itemTotal;
-
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${item.name}</td>
@@ -275,21 +268,15 @@ function handleSalesPage() {
                 <td>${item.quantity}</td>
                 <td>${formatCurrency(itemTotal)}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-danger remove-item-btn" data-index="${index}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    <button class="btn btn-sm btn-outline-danger remove-item-btn" data-index="${index}"><i class="fas fa-trash-alt"></i></button>
                 </td>
             `;
             invoiceItems.appendChild(row);
         });
-
         invoiceTotalEl.textContent = formatCurrency(total);
         attachRemoveItemListeners();
     }
-    
-    /**
-     * Attaches event listeners to the "remove" buttons in the invoice.
-     */
+
     function attachRemoveItemListeners() {
         document.querySelectorAll('.remove-item-btn').forEach(button => {
             button.addEventListener('click', function() {
@@ -300,34 +287,88 @@ function handleSalesPage() {
         });
     }
 
-    /**
-     * Handles adding an item to the sale.
-     */
+    // --- New Customer Logic ---
+    async function populateCustomersDropdown() {
+        try {
+            const response = await fetchWithAuth('/api/customers');
+            const customers = await response.json();
+            // Clear existing options but keep the first "Anonymous" one
+            customerSelect.options.length = 1; 
+            customers.forEach(customer => {
+                const option = new Option(`${customer.name} (${customer.phone || 'بێ ژمارە'})`, customer.id);
+                customerSelect.add(option);
+            });
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            showAlert('هەڵەیەک لە هێنانی لیستی کڕیارەکان ڕوویدا', 'danger');
+        }
+    }
+
+    // Enable 'debt' option only if a real customer is selected
+    customerSelect.addEventListener('change', function() {
+        if (this.value) { // if a customer ID is selected
+            paymentDebtRadio.disabled = false;
+        } else { // Anonymous customer
+            paymentDebtRadio.disabled = true;
+            document.getElementById('payment-cash').checked = true; // Default to cash
+        }
+    });
+    
+    // Handle "Add New Customer" button click
+    addNewCustomerBtn.addEventListener('click', () => {
+        customerForm.reset();
+        customerIdInput.value = '';
+        customerModalTitle.textContent = 'زیادکردنی کڕیاری نوێ';
+        customerModal.show();
+    });
+
+    // Handle saving new customer from modal
+    customerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const customerData = {
+            name: document.getElementById('customer-name').value,
+            phone: document.getElementById('customer-phone').value,
+            address: document.getElementById('customer-address').value,
+            email: document.getElementById('customer-email').value,
+        };
+        try {
+            const response = await fetchWithAuth('/api/customers', {
+                method: 'POST',
+                body: JSON.stringify(customerData)
+            });
+            if (!response.ok) throw new Error('Failed to save new customer');
+            const newCustomer = await response.json();
+            await populateCustomersDropdown(); // Refresh dropdown
+            customerSelect.value = newCustomer.id; // Auto-select the new customer
+            customerSelect.dispatchEvent(new Event('change')); // Trigger change event to enable debt
+            customerModal.hide();
+            showAlert('کڕیاری نوێ بە سەرکەوتوویی زیادکرا', 'success');
+        } catch (error) {
+            console.error('Error saving new customer:', error);
+            showAlert('هەڵەیەک لە زیادکردنی کڕیاری نوێ ڕوویدا', 'danger');
+        }
+    });
+    // --- End of New Customer Logic ---
+
+
     posForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const selectedProductId = productSelect.value;
         const quantity = parseInt(quantityInput.value);
-
         if (!selectedProductId || !quantity || quantity <= 0) {
             showAlert('تکایە کاڵا و ژمارەی دانە بە دروستی هەڵبژێرە.', 'warning');
             return;
         }
-
         const product = inventory.find(p => p.id === selectedProductId);
         const itemInSale = currentSale.find(p => p.id === selectedProductId);
-
         const totalQuantityInSale = (itemInSale ? itemInSale.quantity : 0) + quantity;
-
         if (!product || product.quantity < totalQuantityInSale) {
             showAlert('بڕی داواکراو لە کۆگا زیاترە!', 'danger');
             return;
         }
-
         if(itemInSale) {
-            // Update quantity if item is already in the invoice
             itemInSale.quantity += quantity;
         } else {
-            // Add new item to invoice
              currentSale.push({
                 id: product.id,
                 name: product.name,
@@ -335,73 +376,75 @@ function handleSalesPage() {
                 quantity: quantity
             });
         }
-
         renderInvoice();
-        posForm.reset(); // Reset form for next entry
+        // Do not reset the entire form, just quantity and product selection
+        quantityInput.value = 1;
+        productSelect.value = '';
         productSelect.focus();
     });
 
-    /**
-     * Finalizes the sale, updating the main inventory.
-     */
     finalizeSaleBtn.addEventListener('click', function() {
         if (currentSale.length === 0) {
             showAlert('هیچ کاڵایەک بۆ فرۆشتن زیاد نەکراوە.', 'warning');
             return;
         }
 
-        // --- Send sale data to the server ---
+        const customerId = customerSelect.value || null;
+        const paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+
+        if (paymentType === 'debt' && !customerId) {
+            showAlert('تکایە کڕیارێک هەڵبژێرە بۆ فرۆشتنی قەرز.', 'danger');
+            return;
+        }
+        
+        // The data to be sent to the server
+        const saleData = {
+            saleItems: currentSale,
+            customerId: customerId,
+            paymentType: paymentType
+        };
+
         fetchWithAuth('/api/sale', {
             method: 'POST',
-            body: JSON.stringify(currentSale), // Send the entire sale array
+            body: JSON.stringify(saleData),
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                 return response.json().then(err => { throw new Error(err.message || 'Network response was not ok'); });
             }
             return response.json();
         })
         .then(data => {
-            console.log('Server response:', data.message);
-            // The server now knows about the sale.
-            // We can now update the local state.
-
-            // Update inventory quantities locally (for immediate UI feedback)
+            // Update inventory locally
             currentSale.forEach(saleItem => {
                 const inventoryItem = inventory.find(invItem => invItem.id === saleItem.id);
                 if (inventoryItem) {
                     inventoryItem.quantity -= saleItem.quantity;
                 }
             });
-
-            // Save updated inventory to localStorage
             localStorage.setItem('inventory', JSON.stringify(inventory));
             
-            // TODO: Save the sale record for reporting
-
-            showAlert('فرۆشتن بە سەرکەوتوویی تۆمارکرا و بۆ سێرڤەر نێردرا!', 'success');
+            showAlert(data.message || 'فرۆشتن بە سەرکەوتوویی تۆمارکرا!', 'success');
 
             // Reset for next sale
             currentSale = [];
             renderInvoice();
-            renderProducts(); // Re-render products to show updated quantities
-
+            renderProducts();
+            customerSelect.value = '';
+            customerSelect.dispatchEvent(new Event('change'));
         })
         .catch((error) => {
-            console.error('Error sending sale to server:', error);
-            showAlert('هەڵەیەک ڕوویدا لە کاتی ناردنی زانیاری بۆ سێرڤەر.', 'danger');
+            console.error('Error finalizing sale:', error);
+            showAlert(`هەڵەیەک ڕوویدا: ${error.message}`, 'danger');
         });
     });
 
-    /**
-     * Prints a receipt of the current sale.
-     */
     printReceiptBtn.addEventListener('click', function() {
         if (currentSale.length === 0) {
             showAlert('هیچ کاڵایەک نییە بۆ پرێنتکردن.', 'warning');
             return;
         }
-        
+        const customerName = customerSelect.options[customerSelect.selectedIndex].text;
         const receiptWindow = window.open('', 'PRINT', 'height=600,width=800');
         receiptWindow.document.write(`
             <html>
@@ -421,7 +464,8 @@ function handleSalesPage() {
                     <div class="receipt-container">
                         <h2>ژمێریاری ROZ</h2>
                         <h3>وەسڵی فرۆشتن</h3>
-                        <p>بەروار: ${new Date().toLocaleString('ar-IQ')}</p>
+                        <p><strong>بۆ بەڕێز:</strong> ${customerName}</p>
+                        <p><strong>بەروار:</strong> ${new Date().toLocaleString('ar-IQ')}</p>
                         <table>
                             <thead>
                                 <tr>
@@ -457,9 +501,9 @@ function handleSalesPage() {
         `);
     });
 
-
     // Initial render on page load
     renderProducts();
+    populateCustomersDropdown();
 }
 
 

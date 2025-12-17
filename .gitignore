@@ -5,4 +5,13 @@
 .env
 
 # PM2 logs
+
 *.log
+
+
+
+# Obsolete files
+
+daily-book.json
+
+init-db.js

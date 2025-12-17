@@ -3,12 +3,11 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const fs = require('fs').promises;
 const { sendNotification } = require('./notificationService');
+const db = require('./db');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const DAILY_BOOK_PATH = path.join(__dirname, 'daily-book.json');
 
 // --- Middleware ---
 
@@ -24,40 +23,13 @@ const adminOnly = (req, res, next) => {
     }
 };
 
-// --- API Endpoints ---
-
-// Helper function to read daily book entries
-const readDailyBook = async () => {
-    try {
-        const data = await fs.readFile(DAILY_BOOK_PATH, 'utf8');
-        // If the file is empty, return an empty array to avoid JSON parsing errors.
-        if (data.trim() === '') {
-            return [];
-        }
-        return JSON.parse(data);
-    } catch (error) {
-        // If the file doesn't exist, return an empty array.
-        if (error.code === 'ENOENT') {
-            return [];
-        }
-        // If there's any other error (like corrupted JSON), log it and return an empty array to prevent a crash.
-        console.error('Error reading or parsing daily-book.json:', error);
-        return [];
-    }
-};
-
-// Helper function to write daily book entries
-const writeDailyBook = async (data) => {
-    await fs.writeFile(DAILY_BOOK_PATH, JSON.stringify(data, null, 2), 'utf8');
-};
-
-// --- Daily Book API Endpoints ---
+// --- Daily Book API Endpoints (Database Version) ---
 
 // Get all entries (public)
 app.get('/api/daily-book', async (req, res) => {
     try {
-        const entries = await readDailyBook();
-        res.json(entries);
+        const { rows } = await db.query('SELECT * FROM daily_book_entries ORDER BY created_at DESC');
+        res.json(rows);
     } catch (error) {
         console.error('Error reading daily book:', error);
         res.status(500).json({ message: 'Error reading daily book' });
@@ -71,15 +43,11 @@ app.post('/api/daily-book', adminOnly, async (req, res) => {
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
         }
-        const entries = await readDailyBook();
-        const newEntry = {
-            id: Date.now(), // Use timestamp as a simple unique ID
-            timestamp: new Date().toISOString(),
-            content: content
-        };
-        entries.push(newEntry);
-        await writeDailyBook(entries);
-        res.status(201).json(newEntry);
+        const { rows } = await db.query(
+            'INSERT INTO daily_book_entries (content) VALUES ($1) RETURNING *', 
+            [content]
+        );
+        res.status(201).json(rows[0]);
     } catch (error) {
         console.error('Error adding daily book entry:', error);
         res.status(500).json({ message: 'Error adding entry' });
@@ -94,15 +62,14 @@ app.put('/api/daily-book/:id', adminOnly, async (req, res) => {
         if (!content) {
             return res.status(400).json({ message: 'Content is required' });
         }
-        const entries = await readDailyBook();
-        const entryIndex = entries.findIndex(e => e.id == id);
-        if (entryIndex === -1) {
+        const { rows } = await db.query(
+            'UPDATE daily_book_entries SET content = $1, updated_at = now() WHERE id = $2 RETURNING *',
+            [content, id]
+        );
+        if (rows.length === 0) {
             return res.status(404).json({ message: 'Entry not found' });
         }
-        entries[entryIndex].content = content;
-        entries[entryIndex].updatedAt = new Date().toISOString();
-        await writeDailyBook(entries);
-        res.json(entries[entryIndex]);
+        res.json(rows[0]);
     } catch (error) {
         console.error('Error updating daily book entry:', error);
         res.status(500).json({ message: 'Error updating entry' });
@@ -113,12 +80,10 @@ app.put('/api/daily-book/:id', adminOnly, async (req, res) => {
 app.delete('/api/daily-book/:id', adminOnly, async (req, res) => {
     try {
         const { id } = req.params;
-        const entries = await readDailyBook();
-        const newEntries = entries.filter(e => e.id != id);
-        if (entries.length === newEntries.length) {
+        const result = await db.query('DELETE FROM daily_book_entries WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Entry not found' });
         }
-        await writeDailyBook(newEntries);
         res.status(204).send(); // No content
     } catch (error) {
         console.error('Error deleting daily book entry:', error);
@@ -127,39 +92,147 @@ app.delete('/api/daily-book/:id', adminOnly, async (req, res) => {
 });
 
 
-// API endpoint for recording a sale
-app.post('/api/sale', (req, res) => {
-    const saleItems = req.body; // Expects an array of items
-    
-    console.log("--- New Sale Recorded ---");
-    if (Array.isArray(saleItems)) {
-        let totalSaleAmount = 0;
-        let saleSummary = "";
+// --- Customer API Endpoints ---
 
-        saleItems.forEach(item => {
-            console.log(`  - Item: ${item.name}, Quantity: ${item.quantity}, Price: ${item.price}`);
-            totalSaleAmount += item.price * item.quantity;
-            saleSummary += `${item.quantity} x ${item.name}\n`;
-        });
-        console.log("-------------------------");
+// Get all customers
+app.get('/api/customers', async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT * FROM customers ORDER BY name');
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching customers:', error);
+        res.status(500).json({ message: 'Error fetching customers' });
+    }
+});
 
-        // Send a single notification for the entire sale
+// Get a single customer by ID
+app.get('/api/customers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rows } = await db.query('SELECT * FROM customers WHERE id = $1', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error fetching customer:', error);
+        res.status(500).json({ message: 'Error fetching customer' });
+    }
+});
+
+// Add a new customer
+app.post('/api/customers', adminOnly, async (req, res) => {
+    try {
+        const { name, phone, address, email } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'Name is required' });
+        }
+        const { rows } = await db.query(
+            'INSERT INTO customers (name, phone, address, email) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, phone, address, email]
+        );
+        res.status(201).json(rows[0]);
+    } catch (error) {
+        console.error('Error adding customer:', error);
+        res.status(500).json({ message: 'Error adding customer' });
+    }
+});
+
+// Update a customer
+app.put('/api/customers/:id', adminOnly, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, phone, address, email } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'Name is required' });
+        }
+        const { rows } = await db.query(
+            'UPDATE customers SET name = $1, phone = $2, address = $3, email = $4 WHERE id = $5 RETURNING *',
+            [name, phone, address, email, id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('Error updating customer:', error);
+        res.status(500).json({ message: 'Error updating customer' });
+    }
+});
+
+// Delete a customer
+app.delete('/api/customers/:id', adminOnly, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('DELETE FROM customers WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        res.status(204).send(); // No content
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        res.status(500).json({ message: 'Error deleting customer' });
+    }
+});
+
+
+// API endpoint for recording a sale (Transactional Version)
+app.post('/api/sale', adminOnly, async (req, res) => {
+    const { saleItems, customerId, paymentType } = req.body;
+
+    if (!saleItems || saleItems.length === 0) {
+        return res.status(400).json({ message: 'Sale must include at least one item.' });
+    }
+    if (paymentType === 'debt' && !customerId) {
+        return res.status(400).json({ message: 'A customer must be selected for a debt sale.' });
+    }
+
+    const totalAmount = saleItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // We use a client from the pool to run multiple queries in a single transaction
+    const client = await db.pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // 1. Insert into sales table
+        const saleQuery = 'INSERT INTO sales (customer_id, total_amount, payment_type) VALUES ($1, $2, $3) RETURNING id';
+        const saleResult = await client.query(saleQuery, [customerId, totalAmount, paymentType]);
+        const newSaleId = saleResult.rows[0].id;
+
+        // 2. Insert into sale_items table
+        for (const item of saleItems) {
+            const saleItemQuery = 'INSERT INTO sale_items (sale_id, item_name, quantity, price_per_item) VALUES ($1, $2, $3, $4)';
+            await client.query(saleItemQuery, [newSaleId, item.name, item.quantity, item.price]);
+        }
+
+        // 3. If it's a debt sale, insert into debts table
+        if (paymentType === 'debt') {
+            const debtQuery = 'INSERT INTO debts (customer_id, sale_id, total_debt) VALUES ($1, $2, $3)';
+            await client.query(debtQuery, [customerId, newSaleId, totalAmount]);
+        }
+
+        // 4. Update inventory (This part is tricky as inventory is in localStorage)
+        // For now, we assume the frontend handles the inventory update.
+        // In a full database-driven system, inventory would also be in a DB table
+        // and we would run UPDATE queries here.
+        
+        await client.query('COMMIT');
+        
+        // Send notification
         sendNotification({
-            title: 'فرۆشتنێکی نوێ تۆمارکرا',
-            message: `کۆی گشتی فرۆش: ${totalSaleAmount.toLocaleString()} IQD\n\n${saleSummary.trim()}`
+            title: `فرۆشتنێکی نوێ (${paymentType === 'debt' ? 'قەرز' : 'نەقد'})`,
+            message: `بڕی ${totalAmount.toLocaleString()} IQD بۆ کڕیار ID: ${customerId || 'نەناسراو'}`
         });
 
-        res.json({ message: 'Sale array processed successfully' });
-    } else {
-        // Fallback for single item
-        const { item, quantity, price } = req.body;
-        console.log(`  - Item: ${item}, Quantity: ${quantity}, Price: ${price}`);
-        console.log("-------------------------");
-        sendNotification({
-            title: 'فرۆشتنێکی تاك تۆمارکرا',
-            message: `${quantity} x ${item} بە نرخی ${price}`
-        });
-        res.json({ message: 'Single sale item processed successfully' });
+        res.status(201).json({ message: 'Sale recorded successfully!', saleId: newSaleId });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error recording sale:', error);
+        res.status(500).json({ message: 'Failed to record sale.' });
+    } finally {
+        client.release();
     }
 });
 
