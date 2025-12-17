@@ -255,11 +255,30 @@ body {
         transform: translateX(0);
     }
 
-                .main-content {
-                    margin-right: 0;
-                }
-            }
+    .main-content {
+        margin-right: 0;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .header .search-box {
+        width: 100%;
+        order: 3; /* Move search box to the next line */
+        margin-left: 0;
+    }
+    
+    .header .search-box input {
+        width: 100%;
+    }
+}
             @media (max-width: 576px) {
+                body {
+                    font-size: 14px; /* Slightly smaller font on small screens */
+                }
+
                 #invoice-area .table-responsive {
                     font-size: 0.8rem;
                 }
@@ -272,5 +291,13 @@ body {
                 .d-grid.gap-2.d-md-flex.justify-content-md-end {
                     display: grid !important;
                     gap: 0.5rem !important;
+                }
+                
+                .p-5.mb-4.bg-light.rounded-3 { /* Welcome message padding */
+                    padding: 2rem !important;
+                }
+
+                .display-5 {
+                    font-size: 2.5rem; /* Adjust heading size */
                 }
             }
