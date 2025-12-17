@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فرۆشتن - سیستەمی ژمێریاری مۆدێرن</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h2><i class="fas fa-calculator me-2"></i>ژمێریاری ROZ</h2>
+        </div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link"><i class="fas fa-home"></i> داشبۆرد</a>
+            <a href="sales.html" class="nav-link active"><i class="fas fa-chart-line"></i> فرۆشتن</a>
+            <a href="purchases.html" class="nav-link"><i class="fas fa-shopping-cart"></i> کڕین</a>
+            <a href="inventory.html" class="nav-link"><i class="fas fa-boxes"></i> کۆگا</a>
+            <a href="add-items.html" class="nav-link"><i class="fas fa-plus-circle"></i> زیادکردنی کاڵا</a>
+            <a href="reports.html" class="nav-link"><i class="fas fa-file-alt"></i> ڕاپۆرت</a>
+            <a href="daily-book.html" class="nav-link"><i class="fas fa-book"></i> دەفتەری ڕۆژانە</a>
+            <a href="admin.html" class="nav-link"><i class="fas fa-user-shield"></i> ئادمین</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header mb-4">
+            <button class="btn d-lg-none" type="button" id="sidebar-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 class="h3">فرۆشتن</h1>
+            <div class="d-flex align-items-center">
+                <div class="search-box ms-3">
+                    <input type="text" class="form-control" placeholder="گەڕان...">
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                    <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+                </div>
+                <div class="user-info">
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">
+                            <img src="resources/office-workspace.png" alt="User" style="width: 40px; height: 40px; border-radius: 50%;">
+                            <span>ئادمین</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#">پڕۆفایل</a></li>
+                            <li><a class="dropdown-item" href="#">ڕێکخستن</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" id="logout-btn" href="#">چوونەدەرەوە</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Alert Placeholder -->
+        <div id="alert-placeholder"></div>
+        
+        <div class="row g-4 row-gap-4">
+            <!-- Left Side: POS Interface -->
+            <div class="col-lg-7 col-md-12">
+                <div class="card card-custom h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">فۆڕمی فرۆشتن</h5>
+                        
+                        <!-- Sale Form -->
+                        <form id="pos-form" class="mb-4">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label for="product-select" class="form-label">کاڵا هەڵبژێرە</label>
+                                    <select id="product-select" class="form-select"></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="quantity-input" class="form-label">دانە</label>
+                                    <input type="number" id="quantity-input" class="form-control" value="1" min="1">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus me-1"></i> زیادکردن</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Invoice / Cart -->
+                        <div id="invoice-area" class="flex-grow-1">
+                            <h6 class="border-bottom pb-2 mb-3">وەسڵی کاتی</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>کاڵا</th>
+                                            <th>نرخ</th>
+                                            <th>دانە</th>
+                                            <th>کۆی گشتی</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="invoice-items">
+                                        <!-- Items will be added here dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Totals and Actions -->
+                        <div class="border-top pt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">کۆی گشتی:</h6>
+                                <h6 id="invoice-total" class="mb-0">0 IQD</h6>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button id="print-receipt-btn" class="btn btn-secondary"><i class="fas fa-print me-2"></i>پرێنتکردنی وەسڵ</button>
+                                <button id="finalize-sale-btn" class="btn btn-success"><i class="fas fa-check-circle me-2"></i>کۆتایی پێهێنان</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Product List -->
+            <div class="col-lg-5 col-md-12">
+                <div class="card card-custom h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">لیستی کاڵا بەردەستەکان</h5>
+                        <div id="product-list-container" class="row g-3">
+                            <!-- Products will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

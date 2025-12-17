@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستەمی ژمێریاری مۆدێرن</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- ECharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+</head>
+<body>
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <h2><i class="fas fa-calculator me-2"></i>ژمێریاری MUHAMMAD</h2>
+        </div>
+        <div class="nav-links">
+            <a href="index.html" class="nav-link active"><i class="fas fa-home"></i> داشبۆرد</a>
+            <a href="sales.html" class="nav-link"><i class="fas fa-chart-line"></i> فرۆشتن</a>
+            <a href="purchases.html" class="nav-link"><i class="fas fa-shopping-cart"></i> کڕین</a>
+            <a href="inventory.html" class="nav-link"><i class="fas fa-boxes"></i> کۆگا</a>
+            <a href="add-items.html" class="nav-link"><i class="fas fa-plus-circle"></i> زیادکردنی کاڵا</a>
+            <a href="reports.html" class="nav-link"><i class="fas fa-file-alt"></i> ڕاپۆرت</a>
+            <a href="daily-book.html" class="nav-link"><i class="fas fa-book"></i> دەفتەری ڕۆژانە</a>
+            <a href="admin.html" class="nav-link"><i class="fas fa-user-shield"></i> ئادمین</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="header mb-4">
+                <button class="btn d-lg-none" type="button" id="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="search-box ms-3">
+                    <input type="text" class="form-control" placeholder="گەڕان...">
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                    <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+                </div>
+            <div class="user-info">
+                <div class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">
+                        <img src="resources/office-workspace.png" alt="User">
+                        <span>ئادمین</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#">پڕۆفایل</a></li>
+                        <li><a class="dropdown-item" href="#">ڕێکخستن</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="logout-btn" href="#">چوونەدەرەوە</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Welcome Message -->
+        <div class="p-5 mb-4 bg-light rounded-3">
+            <div class="container-fluid py-5">
+              <h1 class="display-5 fw-bold">بەخێربێیت بۆ سیستەمی ژمێریاری</h1>
+              <p class="col-md-8 fs-4">چارەسەری یەکگرتوو بۆ بەڕێوەبردنی بزنسەکەت بە شێوەیەکی کارا و زیرەک.</p>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-custom h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="card-icon bg-light-blue me-3">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">کۆی فرۆشتن</h6>
+                            <h4 class="card-title fw-bold">0 <small>IQD</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-custom h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="card-icon bg-light-green me-3">
+                            <i class="fas fa-shopping-bag"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">کۆی کڕین</h6>
+                            <h4 class="card-title fw-bold">0 <small>IQD</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-custom h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="card-icon bg-light-orange me-3">
+                            <i class="fas fa-warehouse"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">بهای کۆگا</h6>
+                            <h4 class="card-title fw-bold">0 <small>IQD</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-custom h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="card-icon bg-light-red me-3">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-subtitle mb-2 text-muted">قازانج</h6>
+                            <h4 class="card-title fw-bold">0 <small>IQD</small></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="chart-container h-100">
+                    <h5 class="mb-4">تێکڕای فرۆشتن (٦ مانگی ڕابردوو)</h5>
+                    <div id="salesChart" style="height: 350px;"></div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="chart-container h-100">
+                    <h5 class="mb-4">پۆلێنکردنی داهات</h5>
+                    <div id="incomePieChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Print Button -->
+    <button class="btn btn-primary btn-print" onclick="window.print()">
+        <i class="fas fa-print"></i>
+    </button>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Sales Chart
+            const salesChart = echarts.init(document.getElementById('salesChart'));
+            const salesOption = {
+                tooltip: { trigger: 'axis' },
+                xAxis: {
+                    type: 'category',
+                    data: ['مانگی ١', 'مانگی ٢', 'مانگی ٣', 'مانگی ٤', 'مانگی ٥', 'مانگی ٦']
+                },
+                yAxis: { type: 'value' },
+                series: [{
+                    name: 'فرۆشتن',
+                    type: 'line',
+                    data: [120, 200, 150, 80, 70, 110],
+                    smooth: true,
+                    itemStyle: { color: '#0d6efd' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                            offset: 0,
+                            color: 'rgba(13, 110, 253, 0.3)'
+                        }, {
+                            offset: 1,
+                            color: 'rgba(13, 110, 253, 0)'
+                        }])
+                    }
+                }]
+            };
+            salesChart.setOption(salesOption);
+
+            // Income Pie Chart
+            const incomePieChart = echarts.init(document.getElementById('incomePieChart'));
+            const incomePieOption = {
+                tooltip: { trigger: 'item' },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                },
+                series: [{
+                    name: 'سەرچاوەی داهات',
+                    type: 'pie',
+                    radius: '70%',
+                    data: [
+                        { value: 1048, name: 'فرۆشی ڕاستەوخۆ' },
+                        { value: 735, name: 'فرۆشی ئۆنلاین' },
+                        { value: 580, name: 'خزمەتگوزاری' },
+                        { value: 484, name: 'کرێ' },
+                        { value: 300, name: 'هتد' }
+                    ],
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+            incomePieChart.setOption(incomePieOption);
+
+            // Resize charts on window resize
+            window.addEventListener('resize', function () {
+                salesChart.resize();
+                incomePieChart.resize();
+            });
+        });
+    </script>
+</body>
+</html>
